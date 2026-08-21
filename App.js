@@ -1,127 +1,77 @@
-import React, {useState, useRef} from 'react';
-import {View, Text, StyleSheet, TouchableOpacity, Image} from  'react-native';
-import {CameraView, useCameraPermissions} from 'expo-camera';
+import React, {useState, useEffect} from 'react';
+import {View, Text, StyleSheet, TouchableOpacity, ActivityIndicator} from 'react-native';
 
-export default function CameraScreen(){
-    //hook do Expo para verificar e pedir permissão acesso à câmera
-    const [permission, requestPermission] = useCameraPermissions();
-    //Estado para armazenar a foto tirada (URI da imagem salva temporariamente)
-    const [capturedPhoto, setCapturedPhoto] = useState(null);
-    //Referência para o componentes CameraView para acionar a captura de foto
-    const cameraRef = useRef(null);
+import * as Location from 'expo-location';
 
-    //Se o estado da permissão ainda está carregando
-    if (!permission){
-        return <View/>
+export default function LocationScreen() {
+  
+  //estado para armazenar a localização e coordenadas
+  const [location, setLocation] = useState(null);
+
+  //estado para controlar a mensagem de erro ou status da permissão
+  const [errorMsg, setErrorMsg] = useState(null);
+  
+  //
+  const [loading, setLoading] = useState(false);
+
+
+  const fetchCurrentLocation = async () => {
+    setLoading(true);
+    setErrorMsg(null);
+
+    let { status } = await Location.requestForegroundPermissionsAsync();
+
+    if (status =! 'granted') {
+      setErrorMsg('Permissão para acessar a localização foi negada');
     }
-    //Se a permissão não for concedida pelo usuário
-    if (!permission.granted){
-        return(
-            <View style={styles.permissaoContainer}>
-                <Text>Precisamos da sua permissão para abrir a câmera</Text>
-                <TouchableOpacity style={styles.permissionButton} 
-                onPress={requestPermission}>
-                    <Text style={styles.buttonText}>Conceder Permissão</Text>
-                </TouchableOpacity>
-            </View>
-        );
-    }
-    //Função para capturar fotografia
-    const takePicture = async () => {
-        if (cameraRef.current){
-        //Executa o método de captura e retorna um objeto
-            const photo = await cameraRef.current.takePictureAsync();
-            setCapturedPhoto(photo.uri);
-        }
-    };
 
-    return(
-        <View style={styles.container}>
-            {capturedPhoto ? (
-                <View style={styles.previewContainer}>
-                   <Image source={{uri: capturedPhoto}} style={styles.previewImage}/>
-                   <TouchableOpacity style={styles.retryButton} onPress={() => setCapturedPhoto(null)}>
-                    <Text>Tirar Outra Foto</Text>
-                   </TouchableOpacity>
-                </View>
+    let currentLocation = await Location.getCurrentPositionAsync({
+      accuracy: Location.Accuracy.High,
+    });
 
-            ) : (
-                <CameraView style={styles.camera} ref={cameraRef} facing="back">
-                    <View style={styles.actionContainer}>
-                        <TouchableOpacity style={styles.captureButton} onPress={takePicture}>
-                            <View style={styles.captureInnerCircle}/>
-                        </TouchableOpacity>
-                    </View>
-                </CameraView>
-            )}
-            </View>
-    );
+    setLocation(currentLocation);
+    setLoading(false);
+
+
+    
+   return (
+
+    <View style={styles.container}>
+
+      <Text style={styles.headerTitle}>Rastreamento GPS</Text>
+
+      <TouchableOpacity style={styles.fetchButton} onPress={fetchCurrentLocation}>
+
+        <Text style={styles.buttonText}>Capturar Coordenadas</Text>
+      
+      </TouchableOpacity>
+
+      {loading && <ActivityIndicator size="large" color="#0000ff"  style={{marginTop: 20}}/>}
+
+      {errorMsg && <Text style={styles.errorText}>{errorMsg}</Text>}
+
+      {location && (
+
+          <View style={styles.card}>
+
+            <Text style={styles.label}>Latitude:</Text>
+            <Text style={styles.value}>{location.coords.latitude}</Text>
+
+            <Text style={styles.label}>Longitude:</Text>
+            <Text style={styles.value}>{location.coords.longitude}</Text>
+
+            <Text style={styles.label}>Precisão:</Text>
+            <Text style={styles.value}>{location.coords.accuracy}</Text>
+
+          </View>
+
+      )}
+
+    
+    
+    </View>
+   )
+
+
+  }
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#000000',
-  },
-  permissionContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: 20,
-    backgroundColor: '#FFFFFF',
-  },
-  permissionText: {
-    fontSize: 16,
-    textAlign: 'center',
-    marginBottom: 20,
-    color: '#1F2937',
-  },
-  permissionButton: {
-    backgroundColor: '#2563EB',
-    padding: 12,
-    borderRadius: 8,
-  },
-  camera: {
-    flex: 1,
-    justifyContent: 'flex-end',
-  },
-  actionContainer: {
-    paddingBottom: 40,
-    alignItems: 'center',
-  },
-  captureButton: {
-    width: 76,
-    height: 76,
-    borderRadius: 38,
-    borderWidth: 4,
-    borderColor: '#FFFFFF',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  captureInnerCircle: {
-    width: 60,
-    height: 60,
-    borderRadius: 30,
-    backgroundColor: '#FFFFFF',
-  },
-  previewContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  previewImage: {
-    width: '100%',
-    height: '80%',
-    resizeMode: 'contain',
-  },
-  retryButton: {
-    backgroundColor: '#DC2626',
-    padding: 14,
-    borderRadius: 8,
-    marginTop: 20,
-  },
-  buttonText: {
-    color: '#FFFFFF',
-    fontWeight: 'bold',
-  },
-});
